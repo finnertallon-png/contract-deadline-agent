@@ -127,6 +127,17 @@ class TestSegment:
         assert cs[0].heading == "Final Payment"
         assert cs[0].text.startswith("Final payment shall be made")
 
+    def test_heading_does_not_swallow_sentence_continuation(self):
+        # Found by the first live run: repeated title-case words made the
+        # whole wrapped line pass the heading check, splitting a sentence.
+        cs = segment(blocks(
+            "5.2 Final Completion. The Contractor shall achieve Final Completion of",
+            "the Work no later than December 31, 2026.",
+        ))
+        assert cs[0].heading == "Final Completion"
+        assert cs[0].text.startswith("The Contractor shall achieve")
+        assert "Completion of the Work no later" in cs[0].text
+
     def test_no_heading_when_body_starts_directly(self):
         cs = segment(blocks("9.2 The Contractor shall submit its final application for payment."))
         assert cs[0].heading is None

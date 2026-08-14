@@ -64,6 +64,10 @@ def _is_heading_like(s: str) -> bool:
     s = s.strip().rstrip(".")
     if not s or len(s) > 90 or not s[0].isupper():
         return False
+    if "." in s:
+        # An interior sentence boundary means this is heading + body text,
+        # not a heading — let the caller split at the period instead.
+        return False
     words = re.findall(r"[A-Za-z][\w'’-]*", s)
     if not words or len(words) > 10:
         return False
