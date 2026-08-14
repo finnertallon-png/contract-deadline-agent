@@ -17,6 +17,11 @@ def main(argv: list[str] | None = None) -> int:
         description="Ingest a contract (PDF/DOCX) and print its clauses as JSON.",
     )
     parser.add_argument("path", help="contract file (.pdf or .docx)")
+    parser.add_argument(
+        "--candidates",
+        action="store_true",
+        help="also run the deadline prefilter and mark candidate clauses",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -26,6 +31,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     clauses = segment(result.blocks)
+    signals_by_id = {}
+    if args.candidates:
+        from .classify import find_candidates
+
+        signals_by_id = {id(c.clause): c.signals for c in find_candidates(clauses)}
     payload = {
         "source": result.path,
         "kind": result.kind,
@@ -33,9 +43,12 @@ def main(argv: list[str] | None = None) -> int:
         "clause_count": len(clauses),
         "clauses": [
             {k: v for k, v in dataclasses.asdict(c).items() if k != "block_indexes"}
+            | ({"deadline_signals": signals_by_id.get(id(c))} if args.candidates else {})
             for c in clauses
         ],
     }
+    if args.candidates:
+        payload["candidate_count"] = len(signals_by_id)
     json.dump(payload, sys.stdout, indent=2, ensure_ascii=False, default=list)
     print()
     return 0
