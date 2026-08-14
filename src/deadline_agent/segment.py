@@ -49,7 +49,7 @@ class Marker:
     rest: str  # text on the same line after the marker
 
 
-_ARTICLE_RE = re.compile(r"^ARTICLE\s+([IVXLCDM]+|\d+)\b[.:–-]?\s*(.*)$", re.IGNORECASE)
+_ARTICLE_RE = re.compile(r"^ARTICLE\s+([IVXLCDM]+|\d+)\b\s*[.:—–-]?\s*(.*)$", re.IGNORECASE)
 _SECTION_WORD_RE = re.compile(r"^(?:SECTION|Section|§)\s*(\d+(?:\.\d+)*)[.:]?\s+(.*)$")
 _MULTI_DECIMAL_RE = re.compile(r"^(\d+(?:\.\d+)+)\.?\s+(.*)$")
 _SINGLE_DECIMAL_RE = re.compile(r"^(\d+)[.)]\s+(.*)$")
@@ -83,10 +83,10 @@ def parse_marker(text: str) -> Marker | None:
     """
     m = _ARTICLE_RE.match(text)
     if m:
-        return Marker(Kind.ARTICLE, m.group(1).upper(), text[: m.start(2)].rstrip(), m.group(2))
+        return Marker(Kind.ARTICLE, m.group(1).upper(), text[: m.end(1)], m.group(2))
     m = _SECTION_WORD_RE.match(text)
     if m:
-        return Marker(Kind.DECIMAL, m.group(1), text[: m.start(2)].rstrip(), m.group(2))
+        return Marker(Kind.DECIMAL, m.group(1), text[: m.end(1)], m.group(2))
     m = _MULTI_DECIMAL_RE.match(text)
     if m:
         return Marker(Kind.DECIMAL, m.group(1), m.group(1), m.group(2))
