@@ -1,0 +1,198 @@
+{
+  "contract": {
+    "parties": [
+      {
+        "name": "Riverbend Development LLC",
+        "role": "Owner"
+      },
+      {
+        "name": "Cardinal Structures, Inc.",
+        "role": "Contractor"
+      }
+    ],
+    "project_name": "Maple Street Parking Structure, Columbus, Ohio",
+    "contract_value_text": "Four Million Five Hundred Thousand Dollars ($4,500,000)",
+    "effective_date_text": "March 1, 2026",
+    "signals": {
+      "parties_found": true,
+      "project_name_found": true,
+      "contract_value_found": true,
+      "effective_date_found": true
+    }
+  },
+  "threshold": 0.8,
+  "approved_count": 2,
+  "needs_review_count": 5,
+  "records": [
+    {
+      "status": "approved",
+      "review_reasons": [],
+      "obligation_type": "payment",
+      "description": "The Owner must pay each approved application for payment within ten business days of receiving it.",
+      "obligor": "Owner",
+      "deadline_kind": "relative",
+      "trigger": "receipt of an approved application for payment",
+      "duration_value": 10,
+      "duration_unit": "days",
+      "calendar": "business",
+      "date_text": null,
+      "quote": "The Owner shall pay each approved application for payment within ten (10) business days of receipt.",
+      "source_clause": "5.1",
+      "source_path": "ARTICLE 5 > 5.1",
+      "source_page": 1,
+      "confidence": 1.0,
+      "confidence_signals": {
+        "quote_verbatim": true,
+        "duration_in_quote": true,
+        "calendar_consistent": true
+      }
+    },
+    {
+      "status": "approved",
+      "review_reasons": [],
+      "obligation_type": "other",
+      "description": "The Contractor must achieve Final Completion of the Work by the stated date.",
+      "obligor": "The Contractor",
+      "deadline_kind": "absolute",
+      "trigger": null,
+      "duration_value": null,
+      "duration_unit": null,
+      "calendar": null,
+      "date_text": "December 31, 2026",
+      "quote": "The Contractor shall achieve Final Completion of the Work no later than December 31, 2026.",
+      "source_clause": "5.2",
+      "source_path": "ARTICLE 5 > 5.2",
+      "source_page": 1,
+      "confidence": 1.0,
+      "confidence_signals": {
+        "quote_verbatim": true,
+        "date_in_quote": true
+      }
+    },
+    {
+      "status": "needs_review",
+      "review_reasons": [
+        "business vs calendar days not stated in the clause"
+      ],
+      "obligation_type": "notice",
+      "description": "Either party must initiate any Claim by written notice to the other party within twenty-one days after the event giving rise to the Claim occurs.",
+      "obligor": "either party",
+      "deadline_kind": "relative",
+      "trigger": "occurrence of the event giving rise to such Claim",
+      "duration_value": 21,
+      "duration_unit": "days",
+      "calendar": "unspecified",
+      "date_text": null,
+      "quote": "Claims by either party must be initiated by written notice to the other party within twenty-one (21) days after occurrence of the event giving rise to such Claim.",
+      "source_clause": "4.1",
+      "source_path": "ARTICLE 4 > 4.1",
+      "source_page": 1,
+      "confidence": 1.0,
+      "confidence_signals": {
+        "quote_verbatim": true,
+        "duration_in_quote": true,
+        "calendar_consistent": true
+      }
+    },
+    {
+      "status": "needs_review",
+      "review_reasons": [
+        "business vs calendar days not stated in the clause"
+      ],
+      "obligation_type": "notice",
+      "description": "The Contractor must give written notice to the Owner upon encountering a concealed or unknown physical condition.",
+      "obligor": "Contractor",
+      "deadline_kind": "relative",
+      "trigger": "discovery of a concealed or unknown physical condition",
+      "duration_value": 7,
+      "duration_unit": "days",
+      "calendar": "unspecified",
+      "date_text": null,
+      "quote": "the Contractor shall give written notice to the Owner within 7 days of discovery",
+      "source_clause": "4.2",
+      "source_path": "ARTICLE 4 > 4.2",
+      "source_page": 1,
+      "confidence": 1.0,
+      "confidence_signals": {
+        "quote_verbatim": true,
+        "duration_in_quote": true,
+        "calendar_consistent": true
+      }
+    },
+    {
+      "status": "needs_review",
+      "review_reasons": [
+        "business vs calendar days not stated in the clause"
+      ],
+      "obligation_type": "submission",
+      "description": "The Contractor must submit a priced claim, failing which the claim is waived.",
+      "obligor": "Contractor",
+      "deadline_kind": "relative",
+      "trigger": "the giving of the 7-day written notice of the condition ('thereafter')",
+      "duration_value": 21,
+      "duration_unit": "days",
+      "calendar": "unspecified",
+      "date_text": null,
+      "quote": "shall submit a priced claim within 21 days thereafter, failing which the claim is waived",
+      "source_clause": "4.2",
+      "source_path": "ARTICLE 4 > 4.2",
+      "source_page": 1,
+      "confidence": 1.0,
+      "confidence_signals": {
+        "quote_verbatim": true,
+        "duration_in_quote": true,
+        "calendar_consistent": true
+      }
+    },
+    {
+      "status": "needs_review",
+      "review_reasons": [
+        "business vs calendar days not stated in the clause"
+      ],
+      "obligation_type": "submission",
+      "description": "The Contractor must deliver the submittal schedule to the Architect within fourteen days after the Effective Date.",
+      "obligor": "Contractor",
+      "deadline_kind": "relative",
+      "trigger": "the Effective Date",
+      "duration_value": 14,
+      "duration_unit": "days",
+      "calendar": "unspecified",
+      "date_text": null,
+      "quote": "The Contractor shall deliver the submittal schedule to the Architect within fourteen (14) days after the Effective Date.",
+      "source_clause": "5.3",
+      "source_path": "ARTICLE 5 > 5.3",
+      "source_page": 1,
+      "confidence": 1.0,
+      "confidence_signals": {
+        "quote_verbatim": true,
+        "duration_in_quote": true,
+        "calendar_consistent": true
+      }
+    },
+    {
+      "status": "needs_review",
+      "review_reasons": [
+        "business vs calendar days not stated in the clause"
+      ],
+      "obligation_type": "cure",
+      "description": "The Contractor must cure a default within seven days after receiving written notice of default from the Owner, failing which the Owner may terminate the Agreement.",
+      "obligor": "Contractor",
+      "deadline_kind": "relative",
+      "trigger": "receipt of written notice of default from the Owner",
+      "duration_value": 7,
+      "duration_unit": "days",
+      "calendar": "unspecified",
+      "date_text": null,
+      "quote": "the Contractor fails to cure a default within seven (7) days after receipt of written notice of default from the Owner",
+      "source_clause": "6.2",
+      "source_path": "ARTICLE 6 > 6.2",
+      "source_page": 1,
+      "confidence": 1.0,
+      "confidence_signals": {
+        "quote_verbatim": true,
+        "duration_in_quote": true,
+        "calendar_consistent": true
+      }
+    }
+  ]
+}
