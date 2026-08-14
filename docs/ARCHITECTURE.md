@@ -102,3 +102,39 @@ quote actually says, and a stated absolute date appears in the quote. The
 weights are provisional and marked as such in `confidence.py`; the review
 threshold is undecided until there is a labeled set to choose it against —
 per the no-numbers-without-a-test-set standard.
+
+### Review routing: hard rules plus a provisional threshold (2026-08-14)
+
+A record is approved only when nothing argues against it. Two rules are
+hard, independent of any threshold: a supporting quote that isn't found
+verbatim in the clause is never approvable (the extraction can't be traced
+to the contract), and a relative deadline whose business-vs-calendar basis
+the clause doesn't state always goes to review — the extraction is honest,
+but the distinction can move a real deadline by days, so a person confirms
+it against the contract's definitions section. On top of those, records
+below the confidence threshold go to review. The threshold ships at a
+provisional 0.8, biased toward over-reviewing because a bad approval is a
+missed legal deadline; choosing it properly is still blocked on a labeled
+set, and both approved and needs-review records are always written together
+so nothing is silently dropped.
+
+### Writer is a seam; JSON/CSV default, Graph is the deployment target (2026-08-14)
+
+The write stage is an interface, not a single destination. Demo and
+development write local JSON (full fidelity) or CSV (flat rows shaped like
+the target SharePoint list). The Graph API writer is the deployment target
+and lands with the permission-scope decision below — it needs a tenant, an
+app registration, and admin consent, none of which a demo should depend on.
+Rows always carry review status and reasons.
+
+### Model provider: Claude, deployed via Microsoft Foundry in M365 shops (2026-08-14)
+
+The extraction model is Claude. For development and demo, the service calls
+the Anthropic API directly (an API key). In a real M365 deployment the same
+model is served through Microsoft Foundry in the firm's Azure tenant: Entra
+ID auth, Microsoft billing, data residency inside their Azure boundary, and
+no second AI vendor to onboard. The Anthropic SDK supports both — the
+difference is the client constructor (`Anthropic()` vs `AnthropicFoundry`)
+injected into the extractor, which is why the extractor takes its client as
+a parameter. Copilot Studio, if used, is a front-end over the SharePoint
+list or an HTTP caller of this service; it never makes the extraction call.

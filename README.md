@@ -26,7 +26,11 @@ contract administrators on the owner or contractor side.
   notice, cure, and submission window it finds
 - Normalizes relative deadlines ("within 10 days of discovery") into a structured
   trigger + duration representation rather than guessing a calendar date
-- Writes structured output to a SharePoint list, with reminders via Power Automate
+- Writes structured output to a tracked list — SharePoint via the Graph API in
+  deployment, local JSON/CSV for demo and development
+- Reminders come from Power Automate on top of the SharePoint list: a person
+  supplies the trigger date on the list item, and the flow computes the
+  reminder from it. The tool itself never computes a calendar date.
 - Flags low-confidence extractions for human review instead of silently guessing
 
 ## Architecture
@@ -40,7 +44,26 @@ important document in the repository.
 
 ## Running it
 
-TODO once implementation lands.
+```sh
+python -m venv .venv && .venv/Scripts/pip install -e ".[dev]"
+
+# Segment a contract into clauses (no API calls)
+python -m deadline_agent contract.pdf
+python -m deadline_agent contract.pdf --candidates   # mark deadline-bearing clauses
+
+# Full pipeline: extract, score, triage, write (calls the Claude API)
+export ANTHROPIC_API_KEY=...
+python -m deadline_agent contract.pdf --extract --out deadlines.json
+python -m deadline_agent contract.pdf --extract --out deadlines.csv
+
+# Tests run without network or credentials
+python -m pytest
+```
+
+In an M365 deployment the extraction model is Claude served through
+Microsoft Foundry (Entra ID auth, Microsoft billing — no separate Anthropic
+key or vendor relationship); the direct Anthropic API is the development
+path. The code difference is one client constructor.
 
 ## Data
 
