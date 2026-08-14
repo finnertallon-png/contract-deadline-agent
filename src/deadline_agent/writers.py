@@ -87,15 +87,16 @@ def _rows(result: TriageResult) -> list[dict]:
 
 
 class Writer(Protocol):
-    def write(self, result: TriageResult) -> Path: ...
+    def write(self, result: TriageResult, contract: dict | None = None) -> Path: ...
 
 
 class JsonWriter:
     def __init__(self, path: str | Path):
         self.path = Path(path)
 
-    def write(self, result: TriageResult) -> Path:
+    def write(self, result: TriageResult, contract: dict | None = None) -> Path:
         payload = {
+            "contract": contract,
             "threshold": result.threshold,
             "approved_count": len(result.approved),
             "needs_review_count": len(result.needs_review),
@@ -109,12 +110,13 @@ class JsonWriter:
 
 class CsvWriter:
     """Flat rows shaped like the target SharePoint list. List-valued and
-    dict-valued fields are JSON-encoded in their cell."""
+    dict-valued fields are JSON-encoded in their cell. Contract metadata is
+    not row data — it is carried by the JSON output only."""
 
     def __init__(self, path: str | Path):
         self.path = Path(path)
 
-    def write(self, result: TriageResult) -> Path:
+    def write(self, result: TriageResult, contract: dict | None = None) -> Path:
         with self.path.open("w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=FIELDS)
             writer.writeheader()

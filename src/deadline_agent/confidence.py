@@ -1,4 +1,4 @@
-"""Confidence: derived from checkable signals, never self-reported.
+﻿"""Confidence: derived from checkable signals, never self-reported.
 
 Asking a model how sure it is produces uncalibrated numbers. Instead, every
 extraction is checked against things we can verify mechanically:
@@ -45,14 +45,14 @@ _WORD_DURATION_RE = re.compile(
 )
 
 
-def _normalize(text: str) -> str:
+def normalize_ws(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
 def quote_verbatim(quote: str, clause_text: str) -> bool:
     """Whitespace-insensitive containment check; empty quotes never pass."""
-    q = _normalize(quote)
-    return bool(q) and q in _normalize(clause_text)
+    q = normalize_ws(quote)
+    return bool(q) and q in normalize_ws(clause_text)
 
 
 def durations_in(text: str) -> set[tuple[int, str]]:
@@ -95,7 +95,7 @@ def score(obligation: Obligation, clause_text: str) -> tuple[float, dict[str, bo
         if not signals["calendar_consistent"]:
             value -= 0.2
     elif isinstance(deadline, AbsoluteDeadline):
-        signals["date_in_quote"] = _normalize(deadline.date_text) in _normalize(obligation.quote)
+        signals["date_in_quote"] = normalize_ws(deadline.date_text) in normalize_ws(obligation.quote)
         if not signals["date_in_quote"]:
             value -= 0.4
 

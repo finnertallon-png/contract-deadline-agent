@@ -98,6 +98,7 @@ def _run_extract(args, result, clauses) -> int:
     import anthropic
 
     from .extract import DEFAULT_MODEL, ClaudeExtractor, extract_deadlines
+    from .metadata import opening_text, verify
     from .review import DEFAULT_THRESHOLD, triage
     from .writers import CsvWriter, JsonWriter
 
@@ -107,6 +108,9 @@ def _run_extract(args, result, clauses) -> int:
     extractor = ClaudeExtractor(model=args.model or DEFAULT_MODEL)
     try:
         records = extract_deadlines(clauses, extractor)
+        opening = opening_text(result.blocks)
+        metadata = extractor.extract_metadata(opening)
+        contract = metadata.model_dump() | {"signals": verify(metadata, opening)}
     except (anthropic.AuthenticationError, TypeError) as exc:
         # The SDK raises TypeError when no credential source resolves at all.
         if isinstance(exc, TypeError) and "authentication" not in str(exc).lower():
@@ -122,10 +126,11 @@ def _run_extract(args, result, clauses) -> int:
         return 1
 
     triaged = triage(records, threshold=args.threshold or DEFAULT_THRESHOLD)
-    path = writer.write(triaged)
+    path = writer.write(triaged, contract=contract)
     json.dump(
         {
             "source": result.path,
+            "parties": [p["name"] for p in contract["parties"]],
             "clause_count": len(clauses),
             "extracted": len(records),
             "approved": len(triaged.approved),

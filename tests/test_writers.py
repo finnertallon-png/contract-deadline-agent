@@ -37,9 +37,17 @@ class TestFlatten:
         assert row["status"] == "needs_review" and row["review_reasons"]
 
 
+def test_json_writer_carries_contract_metadata(tmp_path):
+    contract = {"parties": [{"name": "Riverbend Development LLC", "role": "Owner"}]}
+    path = JsonWriter(tmp_path / "out.json").write(triaged(), contract=contract)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["contract"]["parties"][0]["role"] == "Owner"
+
+
 def test_json_writer_roundtrip(tmp_path):
     path = JsonWriter(tmp_path / "out.json").write(triaged())
     payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["contract"] is None
     assert payload["approved_count"] == 2
     assert payload["needs_review_count"] == 1
     assert len(payload["records"]) == 3

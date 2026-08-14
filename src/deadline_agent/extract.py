@@ -16,6 +16,7 @@ from typing import Protocol
 
 from . import confidence
 from .classify import Candidate, find_candidates
+from .metadata import METADATA_SYSTEM, ContractMetadata
 from .models import Clause
 from .schema import ClauseExtraction, Obligation
 
@@ -102,6 +103,19 @@ class ClaudeExtractor:
         )
         if response.stop_reason == "refusal" or response.parsed_output is None:
             return ClauseExtraction(obligations=[])
+        return response.parsed_output
+
+    def extract_metadata(self, text: str) -> ContractMetadata:
+        """One call over the document's opening text (see metadata.py)."""
+        response = self._client.messages.parse(
+            model=self.model,
+            max_tokens=2048,
+            system=METADATA_SYSTEM,
+            messages=[{"role": "user", "content": text}],
+            output_format=ContractMetadata,
+        )
+        if response.stop_reason == "refusal" or response.parsed_output is None:
+            return ContractMetadata()
         return response.parsed_output
 
 
