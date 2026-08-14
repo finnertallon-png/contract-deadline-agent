@@ -24,6 +24,13 @@ where it fails.
 - **Business vs calendar days.** Determined by contract definitions that may sit
   in an entirely different section. Extraction can get this wrong.
 - **Long documents.** Extraction quality degrades on very long agreements.
+- **DOCX tables.** Text inside Word tables is not ingested. Deadline-bearing
+  content in tables (submittal schedules, milestone tables) is invisible.
+- **Word auto-numbering.** When a DOCX relies on Word's automatic list
+  numbering, the rendered numbers ("7.3") are not present in the extracted
+  text. Ingest captures that a paragraph is a numbered list item and at what
+  level, but clause numbers reconstructed from that signal are less reliable
+  than printed ones.
 
 ## Accuracy
 
