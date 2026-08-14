@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -73,7 +74,27 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _load_dotenv() -> None:
+    """Fall back to a .env in the working directory when the environment
+    doesn't already carry credentials. Deliberately minimal — no dependency,
+    no interpolation, existing environment always wins."""
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return
+    env_path = Path(".env")
+    if not env_path.is_file():
+        return
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip("'\"")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
 def _run_extract(args, result, clauses) -> int:
+    _load_dotenv()
     import anthropic
 
     from .extract import DEFAULT_MODEL, ClaudeExtractor, extract_deadlines
