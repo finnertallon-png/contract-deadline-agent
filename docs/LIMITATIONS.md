@@ -26,6 +26,13 @@ where it fails.
 - **Long documents.** Extraction quality degrades on very long agreements.
 - **DOCX tables.** Text inside Word tables is not ingested. Deadline-bearing
   content in tables (submittal schedules, milestone tables) is invisible.
+- **Metadata comes from the opening pages.** Parties, project name,
+  contract value, and effective date are read from the document's opening
+  text only. Values defined in an exhibit, or changed by amendment, are
+  missed.
+- **Warranty and coverage periods are not tracked.** A duration of coverage
+  ("warrants the Work for one year") is not extracted as a deadline — only
+  act-by obligations are. See `examples/README.md`.
 - **Word auto-numbering.** When a DOCX relies on Word's automatic list
   numbering, the rendered numbers ("7.3") are not present in the extracted
   text. Ingest captures that a paragraph is a numbered list item and at what

@@ -127,6 +127,19 @@ and lands with the permission-scope decision below — it needs a tenant, an
 app registration, and admin consent, none of which a demo should depend on.
 Rows always carry review status and reasons.
 
+### Document metadata: one pass over the opening text (2026-08-14)
+
+Parties, project name, contract value, and effective date are a separate,
+single extraction over the document's opening (capped at a few thousand
+characters) — that is where preambles and recitals put this information,
+and keeping it out of the clause pipeline keeps that pipeline deadline-only.
+Values are verbatim spans (the stated dollar amount, the stated date — never
+reformatted or computed) and each populated field is containment-checked
+against the source text, the same discipline as deadline quotes. Fields the
+opening doesn't state come back null rather than guessed. Metadata defined
+only in exhibits, or changed by amendment, is missed — recorded in
+LIMITATIONS.
+
 ### Model provider: Claude, deployed via Microsoft Foundry in M365 shops (2026-08-14)
 
 The extraction model is Claude. For development and demo, the service calls
