@@ -1,0 +1,47 @@
+# Secrets — never commit
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Node
+node_modules/
+npm-debug.log*
+.next/
+dist/
+build/
+
+# Models and vector stores — regenerate, don't commit
+models/
+*.gguf
+*.bin
+*.safetensors
+.chroma/
+chroma_db/
+*.faiss
+*.index
+
+# Generated corpora — only sample/ is tracked
+data/generated/
+data/full/
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs and scratch
+*.log
+scratch/
+tmp/
