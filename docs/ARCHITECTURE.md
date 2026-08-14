@@ -24,8 +24,8 @@ usually has not happened yet.
 
 ## Design decisions to record here as they are made
 
-- Confidence threshold and how it was chosen
-- Whether extraction runs per-clause or per-document, and the cost tradeoff
+- Confidence threshold and how it was chosen (blocked on a labeled set —
+  the confidence *signals* are decided, see below)
 - Graph API permission scope requested, and why it is the minimum
 
 ## Recorded decisions
@@ -58,3 +58,47 @@ Known gaps, accepted for now and noted in `segment.py`: exhibits and
 schedules restart numbering and will nest wrongly; unnumbered ALL-CAPS
 headings are treated as body text; Word auto-numbering is only visible as
 "this paragraph is a numbered list item", not as the rendered number.
+
+### Deadline schema: tagged union, calendar allows unspecified (2026-08-14)
+
+The original schema assumed every deadline is relative (trigger + duration).
+Contracts also state fixed dates ("by December 31, 2026"), so the deadline
+is a tagged union: `relative` (trigger, duration_value, duration_unit,
+calendar) or `absolute` (the stated date, verbatim). Extracting a stated
+date is not computing one, so the LIMITATIONS promise holds.
+
+`calendar` is `business | calendar | unspecified` rather than a forced
+binary. Whether "days" means business or calendar days is often defined in a
+different section of the contract (a known failure mode); forcing a binary
+choice would make the model guess, and a guess about a deadline basis is
+worse than an honest "unspecified" routed to human review.
+
+### Classification: lexical prefilter, then one LLM pass per clause (2026-08-14)
+
+Classify and Extract are not two model calls. Classification is a cheap,
+recall-biased regex prefilter (duration expressions, time-window phrases,
+absolute dates); only clauses with a signal go to the model, and a single
+structured-output call does classify + extract together — a clause with no
+time-bound obligation extracts to an empty list. Rationale: a second model
+pass would double cost for no signal the extraction doesn't already give,
+and a prefilter false positive costs one wasted call while a false negative
+is a missed deadline, so the filter errs open.
+
+Extraction runs per-clause, not per-document: the verbatim-quote confidence
+check needs a bounded source text to verify against, per-clause calls avoid
+the long-document degradation named in LIMITATIONS, and cost stays bounded
+because the prefilter has already cut the call count. The per-clause system
+prompt is cached, so the fixed prompt is paid for roughly once per run.
+
+### Confidence: derived from checkable signals, not self-reported (2026-08-14)
+
+Self-reported model confidence is uncalibrated, so the pipeline never asks
+for it. Confidence is computed from checks that can be verified mechanically
+against the clause text: the supporting quote appears verbatim (failing this
+caps confidence at 0.2 — a fabricated quote dominates everything), the
+extracted duration is findable in the quote including number-word forms
+("twenty-one (21) days"), the business/calendar choice matches what the
+quote actually says, and a stated absolute date appears in the quote. The
+weights are provisional and marked as such in `confidence.py`; the review
+threshold is undecided until there is a labeled set to choose it against —
+per the no-numbers-without-a-test-set standard.
