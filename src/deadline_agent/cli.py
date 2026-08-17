@@ -75,11 +75,10 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _load_dotenv() -> None:
-    """Fall back to a .env in the working directory when the environment
-    doesn't already carry credentials. Deliberately minimal — no dependency,
-    no interpolation, existing environment always wins."""
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        return
+    """Fall back to a .env in the working directory for any credentials the
+    environment doesn't already carry (Anthropic and Graph alike).
+    Deliberately minimal — no dependency, no interpolation, existing
+    environment always wins."""
     env_path = Path(".env")
     if not env_path.is_file():
         return

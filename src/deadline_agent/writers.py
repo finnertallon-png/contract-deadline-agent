@@ -87,7 +87,9 @@ def _rows(result: TriageResult) -> list[dict]:
 
 
 class Writer(Protocol):
-    def write(self, result: TriageResult, contract: dict | None = None) -> Path: ...
+    # Returns where the records landed: a local Path, or a URL for
+    # destinations that aren't files (the SharePoint list's web address).
+    def write(self, result: TriageResult, contract: dict | None = None) -> Path | str: ...
 
 
 class JsonWriter:
