@@ -26,7 +26,6 @@ usually has not happened yet.
 
 - Confidence threshold and how it was chosen (blocked on a labeled set —
   the confidence *signals* are decided, see below)
-- Graph API permission scope requested, and why it is the minimum
 
 ## Recorded decisions
 
@@ -139,6 +138,40 @@ against the source text, the same discipline as deadline quotes. Fields the
 opening doesn't state come back null rather than guessed. Metadata defined
 only in exhibits, or changed by amendment, is missed — recorded in
 LIMITATIONS.
+
+### Graph permission scope: Sites.Selected, granted to one site (2026-08-16)
+
+When the Graph writer lands, the service's app registration will request
+`Sites.Selected`, not `Sites.ReadWrite.All`. With `ReadWrite.All` the app
+credential can touch every SharePoint site in the tenant — at a law firm
+that is a skeleton key past every matter-level access boundary, and an
+unacceptable blast radius for a service that only writes rows to one
+deadlines list. `Sites.Selected` grants nothing by default; a tenant admin
+then grants the app write access to exactly the one site hosting the
+contracts library and the deadlines list. If the service's credentials
+leak or the code misbehaves, the damage is bounded to that site.
+
+The grant mechanics (a per-site Graph call made by an admin, separate from
+admin consent on the permission itself) still need to be validated against
+a real tenant alongside the writer implementation — that part stays open
+until there is tested code.
+
+Access control is three separate layers, and this decision covers only the
+first: `Sites.Selected` limits where the *software* can reach; ordinary
+SharePoint permissions limit what *people* can see (this tool neither adds
+to nor bypasses them — the contracts library keeps whatever matter-level
+permissions the firm already set); and the notification flows decide who
+gets *told*. A Copilot front-end, if used, retrieves documents as the
+chatting user and cannot fetch anything that user could not already open.
+
+One governance question is deliberately left to the deploying firm: the
+deadlines list contains fragments *of* contracts (quotes, clause numbers,
+party names). If a source contract is restricted but the list is broadly
+visible, the list leaks fragments of a restricted document. The options —
+per-matter lists, item-level permissions on rows, or an explicit policy
+that deadline metadata is more widely visible than the contracts — are a
+firm policy choice, not a code change. Recorded in LIMITATIONS so the
+question is raised before deployment, not discovered after.
 
 ### Model provider: Claude, deployed via Microsoft Foundry in M365 shops (2026-08-14)
 

@@ -13,6 +13,15 @@ where it fails.
   different terms
 - Interpret ambiguous drafting. Where a clause is genuinely ambiguous, it flags
   rather than picks.
+- Enforce access control on its output. Extracted records quote from their
+  source contracts — party names, clause text, dollar figures. If a source
+  document is restricted (ethical walls, matter-level permissions) but the
+  deadlines list it feeds is broadly visible, the list leaks fragments of a
+  restricted document. Permissions on the list are the deploying firm's
+  configuration decision, made before rollout — per-matter lists, item-level
+  permissions, or an explicit policy that deadline metadata is more widely
+  visible than the contracts. See the access-control decision in
+  `ARCHITECTURE.md`.
 
 ## Known failure modes
 
