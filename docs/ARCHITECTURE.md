@@ -151,10 +151,18 @@ then grants the app write access to exactly the one site hosting the
 contracts library and the deadlines list. If the service's credentials
 leak or the code misbehaves, the damage is bounded to that site.
 
-The grant mechanics (a per-site Graph call made by an admin, separate from
-admin consent on the permission itself) still need to be validated against
-a real tenant alongside the writer implementation — that part stays open
-until there is tested code.
+The grant mechanics were validated against a real tenant on 2026-08-17,
+alongside the Graph writer (`src/deadline_agent/graph.py`, procedure in
+`scripts/grant_site_access.md`). Three things only live testing revealed,
+now recorded there and handled in code: the per-site grant is a separate
+admin action from admin consent on the permission (an app with consent
+but no grant is refused, and Graph will not even confirm the site
+exists); a fresh grant propagates unevenly across SharePoint frontends
+for several minutes, so the client retries 401/403 on a short backoff;
+and the `write` role covers list items and file uploads but not list
+creation — provisioning requires `manage`, while runtime writes need
+only `write`, so a stricter deployment can downgrade the role after
+provisioning.
 
 Access control is three separate layers, and this decision covers only the
 first: `Sites.Selected` limits where the *software* can reach; ordinary
