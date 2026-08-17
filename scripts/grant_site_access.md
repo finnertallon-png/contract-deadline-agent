@@ -37,7 +37,7 @@ tenant admin.
 
    ```json
    {
-     "roles": ["write"],
+     "roles": ["manage"],
      "grantedToIdentities": [
        {
          "application": {
@@ -65,9 +65,18 @@ tenant admin.
 
 ## Notes
 
-- `roles: ["write"]` is enough to create lists, columns, items, and upload
-  files. Do not grant `fullcontrol` — the pipeline does not need it.
-- To revoke: `GET /sites/{site-id}/permissions` to find the permission id,
-  then `DELETE /sites/{site-id}/permissions/{permission-id}`.
+- **Why `manage`, not `write`:** `write` covers list items and file uploads
+  — enough for the pipeline's runtime — but creating lists and columns is a
+  schema operation that requires `manage` (verified live: with `write`,
+  every read succeeds and provisioning 403s on the first create). A
+  stricter production split would grant `manage` only while provisioning
+  runs, then downgrade the permission to `write` for runtime. Do not grant
+  `fullcontrol` — nothing here needs it.
+- To change an existing grant's role: `GET /sites/{site-id}/permissions`
+  to find the permission id, then
+  `PATCH /sites/{site-id}/permissions/{permission-id}` with body
+  `{"roles": ["manage"]}`.
+- To revoke: same lookup, then
+  `DELETE /sites/{site-id}/permissions/{permission-id}`.
 - Repeat step 3 per additional site if the app should ever reach more than
   one; each grant is explicit and auditable.

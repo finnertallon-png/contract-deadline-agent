@@ -71,6 +71,13 @@ class FakeGraph:
         if url.endswith("/items") and request.method == "POST":
             self.items.append(json.loads(request.content))
             return httpx.Response(201, json={})
+        if url.endswith("/drive") and request.method == "GET":
+            return httpx.Response(200, json={"id": "drive-1"})
+        if "/drives/drive-1/root:" in url and request.method == "PUT":
+            self.uploaded = request.content
+            return httpx.Response(
+                201, json={"webUrl": "https://contoso.sharepoint.com/c.pdf"}
+            )
         return httpx.Response(404, json={"error": "unhandled"})
 
 
@@ -140,6 +147,16 @@ def test_writer_posts_rows_with_flatten_convention(client, fake):
     assert json.loads(review["review_reasons"])
 
 
+def test_upload_returns_web_url_and_sends_bytes(client, fake, tmp_path):
+    from deadline_agent.graph import upload_to_library
+
+    pdf = tmp_path / "contract.pdf"
+    pdf.write_bytes(b"%PDF-fake")
+    url = upload_to_library(client, SITE_ID, pdf)
+    assert url == "https://contoso.sharepoint.com/c.pdf"
+    assert fake.uploaded == b"%PDF-fake"
+
+
 def test_403_explains_the_site_grant():
     def deny(request):
         if "login" in str(request.url):
@@ -149,6 +166,7 @@ def test_403_explains_the_site_grant():
     client = GraphClient(
         CONFIG, http=httpx.Client(transport=httpx.MockTransport(deny))
     )
+    client._DENIED_RETRY_DELAYS = ()  # no propagation waits in tests
     with pytest.raises(GraphError, match="Sites.Selected"):
         client.site_id()
 

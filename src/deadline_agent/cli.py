@@ -31,7 +31,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--out",
-        help="output file for --extract; .json or .csv (default: <input>.deadlines.json)",
+        help="output for --extract: a .json or .csv path, or the literal "
+        "'sharepoint' to upload the contract and write rows to the "
+        "configured site's deadline list (default: <input>.deadlines.json)",
     )
     parser.add_argument(
         "--threshold",
@@ -101,8 +103,27 @@ def _run_extract(args, result, clauses) -> int:
     from .review import DEFAULT_THRESHOLD, triage
     from .writers import CsvWriter, JsonWriter
 
-    out = Path(args.out) if args.out else Path(args.path).with_suffix(".deadlines.json")
-    writer = CsvWriter(out) if out.suffix.lower() == ".csv" else JsonWriter(out)
+    if args.out == "sharepoint":
+        from .graph import (
+            GraphClient,
+            GraphConfig,
+            GraphError,
+            SharePointWriter,
+            upload_to_library,
+        )
+
+        try:
+            graph_client = GraphClient(GraphConfig.from_env())
+            source_url = upload_to_library(
+                graph_client, graph_client.site_id(), Path(args.path)
+            )
+            writer = SharePointWriter(graph_client, source_file=source_url)
+        except GraphError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+    else:
+        out = Path(args.out) if args.out else Path(args.path).with_suffix(".deadlines.json")
+        writer = CsvWriter(out) if out.suffix.lower() == ".csv" else JsonWriter(out)
 
     extractor = ClaudeExtractor(model=args.model or DEFAULT_MODEL)
     try:
@@ -125,7 +146,12 @@ def _run_extract(args, result, clauses) -> int:
         return 1
 
     triaged = triage(records, threshold=args.threshold or DEFAULT_THRESHOLD)
-    path = writer.write(triaged, contract=contract)
+    try:
+        path = writer.write(triaged, contract=contract)
+    except RuntimeError as exc:  # GraphError included — records survive locally
+        fallback = JsonWriter(Path(args.path).with_suffix(".deadlines.json"))
+        path = fallback.write(triaged, contract=contract)
+        print(f"error: delivery failed ({exc}); wrote {path} instead", file=sys.stderr)
     json.dump(
         {
             "source": result.path,

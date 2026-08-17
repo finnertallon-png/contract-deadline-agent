@@ -109,13 +109,31 @@ class GraphClient:
         self._token_expiry = time.time() + int(payload.get("expires_in", 3600))
         return self._token
 
-    def request(self, method: str, path: str, **kwargs) -> httpx.Response:
-        resp = self._http.request(
-            method,
-            path if path.startswith("http") else f"{GRAPH}{path}",
-            headers={"Authorization": f"Bearer {self._access_token()}"},
-            **kwargs,
-        )
+    # 401/403 retry schedule (seconds). A freshly made Sites.Selected grant
+    # propagates unevenly across SharePoint frontends for a few minutes, so
+    # the same call can flip between 200 and 403 — observed live, not
+    # hypothesized. A truly ungranted app just spends the schedule and then
+    # gets the explanatory error.
+    _DENIED_RETRY_DELAYS = (3, 6, 12, 24)
+
+    def request(
+        self, method: str, path: str, headers: dict | None = None, **kwargs
+    ) -> httpx.Response:
+        url = path if path.startswith("http") else f"{GRAPH}{path}"
+        for attempt, delay in enumerate((*self._DENIED_RETRY_DELAYS, None)):
+            resp = self._http.request(
+                method,
+                url,
+                headers={
+                    "Authorization": f"Bearer {self._access_token()}",
+                    **(headers or {}),
+                },
+                **kwargs,
+            )
+            if resp.status_code not in (401, 403):
+                break
+            if delay is not None:
+                time.sleep(delay)
         if resp.status_code in (401, 403):
             # Sites.Selected with no grant surfaces as 401 (spException) or
             # 403 depending on the endpoint; Graph deliberately won't even
@@ -198,7 +216,9 @@ def ensure_list(client: GraphClient, site_id: str) -> dict:
     Idempotent so provisioning can be re-run after schema additions.
     Returns the list resource.
     """
-    lists = client.get(f"/sites/{site_id}/lists?$select=id,displayName")["value"]
+    lists = client.get(
+        f"/sites/{site_id}/lists?$select=id,displayName,webUrl"
+    )["value"]
     existing = next((x for x in lists if x["displayName"] == LIST_NAME), None)
     if existing is None:
         return client.post(
@@ -231,6 +251,23 @@ def ensure_library(client: GraphClient, site_id: str) -> dict:
         f"/sites/{site_id}/lists",
         {"displayName": LIBRARY_NAME, "list": {"template": "documentLibrary"}},
     )
+
+
+def upload_to_library(client: GraphClient, site_id: str, path) -> str:
+    """Upload a file into the contract library; returns its web URL.
+
+    Simple PUT — contracts are single-digit megabytes, far below the size
+    where Graph requires an upload session.
+    """
+    library = ensure_library(client, site_id)
+    drive = client.get(f"/sites/{site_id}/lists/{library['id']}/drive")
+    item = client.request(
+        "PUT",
+        f"/drives/{drive['id']}/root:/{path.name}:/content",
+        content=path.read_bytes(),
+        headers={"Content-Type": "application/octet-stream"},
+    ).json()
+    return item["webUrl"]
 
 
 # -- writer ----------------------------------------------------------------
