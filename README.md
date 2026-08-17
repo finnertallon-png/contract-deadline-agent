@@ -33,6 +33,15 @@ contract administrators on the owner or contractor side.
   reminder from it. The tool itself never computes a calendar date.
 - Flags low-confidence extractions for human review instead of silently guessing
 
+## See it run
+
+`examples/` contains a synthetic one-page construction contract and the
+unedited output of a real end-to-end run against it: 7 obligations extracted,
+2 auto-approved, 5 routed to human review — every one for an honest reason.
+`examples/README.md` walks through what the output shows and what the
+pipeline deliberately declined to extract. Start there if you want to see
+what this tool actually produces before reading any code.
+
 ## Architecture
 
 See `docs/ARCHITECTURE.md`.
