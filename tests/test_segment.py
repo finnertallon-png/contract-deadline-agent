@@ -150,3 +150,41 @@ class TestSegment:
         ]
         cs = segment(bs)
         assert cs[0].page_start == 3 and cs[0].page_end == 4
+
+
+class TestSentenceContinuationGuard:
+    # Regression: a stress-test contract's 6.2 line-wrapped as "...within
+    # thirty" / "(30) calendar days of receipt." and the segmenter minted a
+    # phantom clause "(30)", truncating the obligation mid-sentence.
+    def test_wrapped_parenthetical_number_is_not_a_clause(self):
+        cs = segment(blocks(
+            "6.2 IDM Evaluation Buffer: The IDM shall review all claims and "
+            "render an initial physical decision within thirty",
+            "(30) calendar days of receipt. This 30-day window forms a "
+            "mandatory legal buffer.",
+            "6.3 Mediation Trigger: Either party may file for mediation.",
+        ))
+        numbers = [c.number for c in cs]
+        assert "(30)" not in numbers
+        clause_62 = next(c for c in cs if c.number == "6.2")
+        assert "within thirty (30) calendar days of receipt" in clause_62.text
+
+    def test_enumeration_after_terminal_punctuation_still_splits(self):
+        cs = segment(blocks(
+            "4.3 Notice. The Contractor shall give notice:",
+            "(1) within 7 days of discovery; and",
+            "(2) within 21 days, a priced claim.",
+        ))
+        by_number = {c.number: c for c in cs}
+        assert by_number["(1)"].path == ("4.3", "(1)")
+        assert by_number["(2)"].path == ("4.3", "(2)")
+
+    def test_sequence_continuation_survives_unpunctuated_wrap(self):
+        # (b) follows an open (a) whose text wrapped without punctuation;
+        # continuing the sequence outranks the sentence-continuation guard.
+        cs = segment(blocks(
+            "4.3 Notice. The Contractor shall give notice:",
+            "(a) within 7 days of discovery and",
+            "(b) within 21 days, a priced claim.",
+        ))
+        assert [c.number for c in cs if c.number] == ["4.3", "(a)", "(b)"]

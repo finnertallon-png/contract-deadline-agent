@@ -17,7 +17,11 @@ Known gaps, deliberate for now: unnumbered ALL-CAPS headings are treated as
 clause body text, exhibits/schedules restart numbering and will nest wrongly,
 and a bare-integer line like "2021." can false-positive as a marker (guarded
 by requiring it to be 1, continue an open sequence, or be followed by
-heading-like text).
+heading-like text). Parenthesized markers carry a sentence-continuation
+guard (see _accept): a line-wrapped "(30) calendar days" is body text, not
+a clause, so a list item that starts a brand-new sequence after unpunctuated
+text will merge into the clause body — the safe direction, since merged text
+still extracts while a truncated sentence does not.
 """
 
 from __future__ import annotations
@@ -185,7 +189,7 @@ def segment(blocks: list[Block]) -> list[Clause]:
 
     for block in blocks:
         marker = parse_marker(block.text)
-        if marker is not None and not _accept(marker, stack):
+        if marker is not None and not _accept(marker, stack, current.text if current else ""):
             marker = None
         if marker is None:
             if current is None:
@@ -205,13 +209,28 @@ def segment(blocks: list[Block]) -> list[Clause]:
     return clauses
 
 
-def _accept(marker: Marker, stack: list[_Open]) -> bool:
+_TERMINAL_PUNCT = ".:;!?\"'’”"
+
+
+def _accept(marker: Marker, stack: list[_Open], current_text: str) -> bool:
     """Guard against sentence text that happens to look like a marker.
 
-    Bare integers ("2021.") are the risky case: accept only 1, a sequence
-    continuation, or a marker followed by heading-like text. Everything else
-    is punctuated distinctively enough to accept outright.
+    Two risky shapes. Bare integers ("2021."): accept only 1, a sequence
+    continuation, or a marker followed by heading-like text. Parenthesized
+    markers at a line start that are really a wrapped sentence's own
+    parenthetical — "...within thirty\\n(30) calendar days..." — where "(30)"
+    is not a clause: accept a parenthesized marker only when it continues an
+    open sequence or the preceding text has ended a sentence (real
+    enumerations follow ":", ";" or "."). Erring toward merging is
+    deliberate: a wrong merge keeps the sentence intact for extraction; a
+    wrong split truncates it mid-obligation (observed live on a contract
+    whose 6.2 lost "(30) calendar days of receipt" to a phantom clause).
     """
+    if marker.kind in (Kind.PAREN_DIGIT, Kind.PAREN_LETTER, Kind.PAREN_ROMAN):
+        if any(is_successor(o.marker, marker) for o in stack):
+            return True
+        tail = current_text.rstrip()
+        return not tail or tail[-1] in _TERMINAL_PUNCT
     if marker.kind != Kind.DECIMAL or "." in marker.value:
         return True
     if marker.value == "1":

@@ -32,6 +32,16 @@ where it fails.
   deadline. Nothing here tracks that automatically.
 - **Business vs calendar days.** Determined by contract definitions that may sit
   in an entirely different section. Extraction can get this wrong.
+- **Clause boundaries on line-wrapped numbering.** A parenthesized number at
+  the start of a PDF line can look like a clause marker when it is really a
+  wrapped sentence's own parenthetical ("...within thirty / (30) calendar
+  days..."). The segmenter guards against this by refusing to start a
+  parenthesized clause mid-sentence — which means the guard errs toward
+  merging: a genuine list whose introduction ends without punctuation will
+  fold into the clause body instead of splitting into sub-clauses. Merged
+  text still extracts; the audit that surfaced this failure (a truncated
+  obligation, caught at 0.60 confidence and routed to review) is why the
+  guard leans that way.
 - **Long documents.** Extraction quality degrades on very long agreements.
 - **DOCX tables.** Text inside Word tables is not ingested. Deadline-bearing
   content in tables (submittal schedules, milestone tables) is invisible.
