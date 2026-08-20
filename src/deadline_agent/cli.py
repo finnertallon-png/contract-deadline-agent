@@ -42,7 +42,17 @@ def main(argv: list[str] | None = None) -> int:
         help="review threshold for --extract (default: the provisional value in review.py)",
     )
     parser.add_argument("--model", default=None, help="model override for --extract")
+    parser.add_argument(
+        "--calendar",
+        action="store_true",
+        help="sync approved absolute deadlines to the GRAPH_CALENDAR_USER "
+        "Outlook calendar — after --extract, or standalone with a "
+        ".deadlines.json input",
+    )
     args = parser.parse_args(argv)
+
+    if args.calendar and Path(args.path).suffix.lower() == ".json":
+        return _run_calendar_json(args)
 
     try:
         result = ingest(args.path)
@@ -53,6 +63,10 @@ def main(argv: list[str] | None = None) -> int:
     clauses = segment(result.blocks)
     if args.extract:
         return _run_extract(args, result, clauses)
+    if args.calendar:
+        print("error: --calendar needs --extract, or a .deadlines.json input",
+              file=sys.stderr)
+        return 1
     signals_by_id = {}
     if args.candidates:
         from .classify import find_candidates
@@ -152,19 +166,64 @@ def _run_extract(args, result, clauses) -> int:
         fallback = JsonWriter(Path(args.path).with_suffix(".deadlines.json"))
         path = fallback.write(triaged, contract=contract)
         print(f"error: delivery failed ({exc}); wrote {path} instead", file=sys.stderr)
-    json.dump(
-        {
-            "source": result.path,
-            "parties": [p["name"] for p in contract["parties"]],
-            "clause_count": len(clauses),
-            "extracted": len(records),
-            "approved": len(triaged.approved),
-            "needs_review": len(triaged.needs_review),
-            "output": str(path),
-        },
-        sys.stdout,
-        indent=2,
-    )
+    summary = {
+        "source": result.path,
+        "parties": [p["name"] for p in contract["parties"]],
+        "clause_count": len(clauses),
+        "extracted": len(records),
+        "approved": len(triaged.approved),
+        "needs_review": len(triaged.needs_review),
+        "output": str(path),
+    }
+    if args.calendar:
+        from .writers import _rows
+
+        payload = {"contract": contract, "records": _rows(triaged)}
+        try:
+            summary["calendar"] = _sync_calendar(
+                payload, _source_of(Path(args.path)))
+        except RuntimeError as exc:  # records are already written; report only
+            print(f"error: calendar sync failed ({exc})", file=sys.stderr)
+    json.dump(summary, sys.stdout, indent=2)
+    print()
+    return 0
+
+
+def _source_of(path: Path) -> str:
+    """Reconciliation id for a contract, identical across entry points:
+    sample_contract.pdf and sample_contract.deadlines.json → sample_contract."""
+    stem = path.stem
+    return stem.removesuffix(".deadlines")
+
+
+def _sync_calendar(payload: dict, source: str) -> dict:
+    from .graph import GraphClient, GraphConfig
+    from .outlook import calendar_user_from_env, sync
+
+    user = calendar_user_from_env()
+    report = sync(GraphClient(GraphConfig.from_env()), user, payload, source)
+    return report.summary()
+
+
+def _run_calendar_json(args) -> int:
+    """Standalone sync from an existing .deadlines.json — no API extraction."""
+    _load_dotenv()
+    path = Path(args.path)
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"error: cannot read {path}: {exc}", file=sys.stderr)
+        return 1
+    if "records" not in payload:
+        print(f"error: {path} is not a deadlines file (no 'records' key)",
+              file=sys.stderr)
+        return 1
+    try:
+        summary = _sync_calendar(payload, _source_of(path))
+    except RuntimeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    json.dump({"source": str(path), **summary}, sys.stdout, indent=2)
     print()
     return 0
 

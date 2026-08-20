@@ -65,6 +65,16 @@ export ANTHROPIC_API_KEY=...
 python -m deadline_agent contract.pdf --extract --out deadlines.json
 python -m deadline_agent contract.pdf --extract --out deadlines.csv
 
+# Deliver to the configured SharePoint site instead (Graph credentials in
+# .env; one-time admin grant in scripts/grant_site_access.md)
+python -m deadline_agent contract.pdf --extract --out sharepoint
+
+# Put approved absolute deadlines on an Outlook calendar as all-day events
+# with reminders (setup in scripts/grant_calendar_access.md). Works after
+# --extract, or standalone from an earlier run's JSON — no API calls then.
+python -m deadline_agent contract.pdf --extract --calendar
+python -m deadline_agent contract.deadlines.json --calendar
+
 # Tests run without network or credentials
 python -m pytest
 ```
