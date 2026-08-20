@@ -46,11 +46,14 @@ def main(argv: list[str] | None = None) -> int:
         "--calendar",
         action="store_true",
         help="sync approved absolute deadlines to the GRAPH_CALENDAR_USER "
-        "Outlook calendar — after --extract, or standalone with a "
-        ".deadlines.json input",
+        "Outlook calendar — after --extract, standalone with a "
+        ".deadlines.json input, or from the live SharePoint list with "
+        "the literal input 'sharepoint'",
     )
     args = parser.parse_args(argv)
 
+    if args.calendar and args.path == "sharepoint":
+        return _run_calendar_list(args)
     if args.calendar and Path(args.path).suffix.lower() == ".json":
         return _run_calendar_json(args)
 
@@ -203,6 +206,34 @@ def _sync_calendar(payload: dict, source: str) -> dict:
     user = calendar_user_from_env()
     report = sync(GraphClient(GraphConfig.from_env()), user, payload, source)
     return report.summary()
+
+
+def _run_calendar_list(args) -> int:
+    """Sync from the live SharePoint list — the deployment mode.
+
+    The list is the system of record here: whatever is currently approved
+    in it (including approvals made through the review chatbot in Teams)
+    lands on the calendar, and rows deleted from the list take their
+    events with them. One reconcile scope covers the whole list, so this
+    mode handles every contract in the list in a single run.
+    """
+    _load_dotenv()
+    from .graph import GraphClient, GraphConfig, read_list_rows
+    from .outlook import calendar_user_from_env, sync
+
+    try:
+        user = calendar_user_from_env()
+        client = GraphClient(GraphConfig.from_env())
+        rows = read_list_rows(client, client.site_id())
+        report = sync(client, user, {"contract": None, "records": rows},
+                      source="sharepoint-list")
+    except RuntimeError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    json.dump({"source": "sharepoint:Contract Deadlines",
+               "rows": len(rows), **report.summary()}, sys.stdout, indent=2)
+    print()
+    return 0
 
 
 def _run_calendar_json(args) -> int:

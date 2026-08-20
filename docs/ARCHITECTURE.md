@@ -208,6 +208,17 @@ untouched. Running it twice is a no-op. Events are all-day (contracts
 state dates, not times) in a dedicated "Contract Deadlines" calendar,
 with a one-week default reminder.
 
+The sync has two data sources with one deliberate difference. Demo/dev
+mode reads a pipeline output file (`contract.deadlines.json`) and scopes
+its reconcile per contract. Deployment mode (`sharepoint --calendar`)
+reads the *live SharePoint list* and scopes its reconcile to the whole
+list — the list is the system of record, so an approval made there
+(by a person, or by the review chatbot in Teams) reaches the calendar on
+the next sync, and a deleted row takes its event with it. No re-extraction
+is involved either way; the calendar follows the record of decisions, not
+the model. The two modes use different reconcile scopes, so a deployment
+picks one — recorded in LIMITATIONS.
+
 The permission model needed its own decision. `Calendars.ReadWrite` as an
 application permission has no `Sites.Selected` equivalent: consent alone
 lets the app token write to every mailbox in the tenant. The deployment

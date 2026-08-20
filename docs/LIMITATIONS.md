@@ -66,6 +66,11 @@ where it fails.
   same obligation with a different quote span, the old event is deleted and
   a new one created — the calendar converges, but reminder state on the
   old event is lost.
+- **Calendar sync modes don't share identity.** JSON-file syncs reconcile
+  per contract; the SharePoint-list sync reconciles the whole list under
+  its own scope. Syncing the same contract through both modes creates
+  duplicate events. A deployment picks one mode — the list mode, if the
+  list is in use, since it reflects approvals made after extraction.
 
 ## Accuracy
 

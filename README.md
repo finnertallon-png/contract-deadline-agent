@@ -75,6 +75,10 @@ python -m deadline_agent contract.pdf --extract --out sharepoint
 python -m deadline_agent contract.pdf --extract --calendar
 python -m deadline_agent contract.deadlines.json --calendar
 
+# Deployment mode: calendar from the live SharePoint list, so approvals
+# made in the list (or through the review chatbot) reach the calendar
+python -m deadline_agent sharepoint --calendar
+
 # Tests run without network or credentials
 python -m pytest
 ```
