@@ -117,7 +117,12 @@ class GraphClient:
     _DENIED_RETRY_DELAYS = (3, 6, 12, 24)
 
     def request(
-        self, method: str, path: str, headers: dict | None = None, **kwargs
+        self,
+        method: str,
+        path: str,
+        headers: dict | None = None,
+        denied_hint: str | None = None,
+        **kwargs,
     ) -> httpx.Response:
         url = path if path.startswith("http") else f"{GRAPH}{path}"
         for attempt, delay in enumerate((*self._DENIED_RETRY_DELAYS, None)):
@@ -137,12 +142,15 @@ class GraphClient:
         if resp.status_code in (401, 403):
             # Sites.Selected with no grant surfaces as 401 (spException) or
             # 403 depending on the endpoint; Graph deliberately won't even
-            # confirm an ungranted site exists.
+            # confirm an ungranted site exists. Callers hitting a different
+            # permission boundary (the calendar sync) pass their own hint.
             raise GraphError(
-                f"{resp.status_code} from Graph — the app has Sites.Selected "
-                "but has not been granted access to this site (see "
-                "scripts/grant_site_access.md for the one-time admin grant), "
-                "or GRAPH_SITE_URL points at a site that does not exist."
+                denied_hint
+                or f"{resp.status_code} from Graph — the app has "
+                "Sites.Selected but has not been granted access to this "
+                "site (see scripts/grant_site_access.md for the one-time "
+                "admin grant), or GRAPH_SITE_URL points at a site that "
+                "does not exist."
             )
         if resp.status_code >= 400:
             raise GraphError(f"{method} {path} failed ({resp.status_code}): {resp.text}")
@@ -151,8 +159,8 @@ class GraphClient:
     def get(self, path: str, **kw) -> dict:
         return self.request("GET", path, **kw).json()
 
-    def post(self, path: str, body: dict) -> dict:
-        return self.request("POST", path, json=body).json()
+    def post(self, path: str, body: dict, **kw) -> dict:
+        return self.request("POST", path, json=body, **kw).json()
 
     # -- site --------------------------------------------------------------
 
