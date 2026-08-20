@@ -57,6 +57,15 @@ where it fails.
   text. Ingest captures that a paragraph is a numbered list item and at what
   level, but clause numbers reconstructed from that signal are less reliable
   than printed ones.
+- **Calendar sync covers a fixed set of date formats.** A stated date the
+  format list does not recognize ("the last business day of March 2027") is
+  skipped and reported, by design. Relative deadlines never reach the
+  calendar at all — supplying the trigger date remains a human step.
+- **Calendar events churn if re-extraction shifts the quote.** The sync
+  keys events on the record's verbatim fields. If a later run extracts the
+  same obligation with a different quote span, the old event is deleted and
+  a new one created — the calendar converges, but reminder state on the
+  old event is lost.
 
 ## Accuracy
 

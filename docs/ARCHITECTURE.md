@@ -181,6 +181,42 @@ that deadline metadata is more widely visible than the contracts — are a
 firm policy choice, not a code change. Recorded in LIMITATIONS so the
 question is raised before deployment, not discovered after.
 
+### Outlook sync: stated dates become calendar dates in one place (2026-08-20)
+
+The pipeline's standing rule is that it never computes a calendar date —
+`date_text` stores what the clause says, verbatim, and LIMITATIONS calls
+converting it "a human decision at calendaring time." The Outlook sync
+(`src/deadline_agent/outlook.py`) is calendaring time, so that is the one
+place the conversion happens, and it happens conservatively: the verbatim
+text is parsed against a fixed list of explicit date formats, and anything
+the list does not match is skipped and *reported* in the sync output, never
+fuzzily guessed. A wrong date on a lawyer's calendar is worse than a
+visible gap. Relative deadlines are likewise reported, not calendared —
+their clock starts at a trigger event the record cannot date — and
+needs-review records stay off the calendar until a person approves them.
+What did not reach the calendar is as much a part of the sync report as
+what did.
+
+Sync is a reconcile, not an append. Each event carries an extended
+property `source|key|content-hash`; the key hashes the record's verbatim
+fields (clause number, quote, stated date) rather than the model-written
+description, because extraction wording can drift between runs while the
+contract text cannot. Per contract, the sync creates what is missing,
+patches what changed, deletes events whose record disappeared, and leaves
+everything else — including hand-made events in the same calendar —
+untouched. Running it twice is a no-op. Events are all-day (contracts
+state dates, not times) in a dedicated "Contract Deadlines" calendar,
+with a one-week default reminder.
+
+The permission model needed its own decision. `Calendars.ReadWrite` as an
+application permission has no `Sites.Selected` equivalent: consent alone
+lets the app token write to every mailbox in the tenant. The deployment
+answer is an Exchange ApplicationAccessPolicy restricting the app to a
+named mailbox group (`scripts/grant_calendar_access.md`), which restores
+the same bounded-blast-radius posture as the site grant. The sync itself
+only ever addresses the single mailbox in `GRAPH_CALENDAR_USER`; the
+policy guarantees the token could not do otherwise.
+
 ### Model provider: Claude, deployed via Microsoft Foundry in M365 shops (2026-08-14)
 
 The extraction model is Claude. For development and demo, the service calls
