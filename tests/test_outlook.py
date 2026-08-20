@@ -125,6 +125,14 @@ def test_planned_event_is_all_day_with_reminder():
     assert "overwritten on the next sync" in event["body"]["content"]
 
 
+def test_list_row_event_links_the_contract_file():
+    [plan], _ = plan_events(
+        payload(row(source_file="https://contoso.sharepoint.com/c.pdf")),
+        "sharepoint-list")
+    assert ("Contract file: https://contoso.sharepoint.com/c.pdf"
+            in plan.payload["body"]["content"])
+
+
 def test_deadline_key_ignores_description_wording():
     assert deadline_key(row()) == deadline_key(row(description="Reworded."))
     assert deadline_key(row()) != deadline_key(row(source_clause="9.9"))

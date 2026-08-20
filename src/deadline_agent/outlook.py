@@ -140,6 +140,10 @@ def _event_body(row: dict, contract: dict | None, source: str) -> str:
         "",
         f"\"{row.get('quote')}\"",
         "",
+    ]
+    if row.get("source_file"):  # list rows carry the contract's library URL
+        lines.append(f"Contract file: {row['source_file']}")
+    lines += [
         f"Synced by contract-deadline-agent from {source}. "
         "Do not edit this event — edits are overwritten on the next sync.",
     ]

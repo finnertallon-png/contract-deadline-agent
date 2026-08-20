@@ -45,6 +45,7 @@ class FakeGraph:
         self.lists: list[dict] = []
         self.columns: list[dict] = []
         self.items: list[dict] = []
+        self.list_items: list[dict] = []
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
@@ -68,6 +69,8 @@ class FakeGraph:
         if url.endswith("/columns") and request.method == "POST":
             self.columns.append(json.loads(request.content))
             return httpx.Response(201, json={})
+        if "/items?" in url and request.method == "GET":
+            return httpx.Response(200, json={"value": self.list_items})
         if url.endswith("/items") and request.method == "POST":
             self.items.append(json.loads(request.content))
             return httpx.Response(201, json={})
@@ -145,6 +148,34 @@ def test_writer_posts_rows_with_flatten_convention(client, fake):
         i["fields"] for i in fake.items if i["fields"]["status"] == "needs_review"
     )
     assert json.loads(review["review_reasons"])
+
+
+def test_read_list_rows_maps_title_back_to_description(client, fake):
+    from deadline_agent.graph import read_list_rows
+
+    fake.lists = [{"id": "list-1", "displayName": "Contract Deadlines"}]
+    fake.list_items = [{"fields": {
+        "Title": "Achieve Final Completion.",
+        "status": "approved",
+        "deadline_kind": "absolute",
+        "date_text": "December 31, 2026",
+        "quote": "no later than December 31, 2026.",
+        "source_clause": "5.2",
+        "source_file": "https://contoso.sharepoint.com/c.pdf",
+    }}]
+    [row] = read_list_rows(client, SITE_ID)
+    assert row["description"] == "Achieve Final Completion."
+    assert row["status"] == "approved"
+    assert row["date_text"] == "December 31, 2026"
+    assert row["source_file"].endswith("c.pdf")
+    assert row["duration_value"] is None  # absent columns come back None
+
+
+def test_read_list_rows_requires_provisioned_list(client, fake):
+    from deadline_agent.graph import read_list_rows
+
+    with pytest.raises(GraphError, match="provision_list"):
+        read_list_rows(client, SITE_ID)
 
 
 def test_upload_returns_web_url_and_sends_bytes(client, fake, tmp_path):

@@ -31,7 +31,7 @@ import httpx
 
 from .review import TriageResult
 from .schema import CalendarBasis, DurationUnit, ObligationType
-from .writers import _rows
+from .writers import FIELDS, _rows
 
 GRAPH = "https://graph.microsoft.com/v1.0"
 LIST_NAME = "Contract Deadlines"
@@ -276,6 +276,39 @@ def upload_to_library(client: GraphClient, site_id: str, path) -> str:
         headers={"Content-Type": "application/octet-stream"},
     ).json()
     return item["webUrl"]
+
+
+# -- reader ----------------------------------------------------------------
+
+
+def read_list_rows(client: GraphClient, site_id: str) -> list[dict]:
+    """Current rows of the deadlines list, shaped like writer rows.
+
+    The read half of the SharePointWriter convention: internal column
+    names are the writer FIELDS, description comes back out of Title.
+    This is what makes the list the system of record for the calendar
+    sync — a status flipped to approved in the list (by a person or by
+    the review chatbot) is picked up here, no re-extraction involved.
+    """
+    lists = client.get(f"/sites/{site_id}/lists?$select=id,displayName")["value"]
+    target = next((x for x in lists if x["displayName"] == LIST_NAME), None)
+    if target is None:
+        raise GraphError(
+            f"list '{LIST_NAME}' not found on the configured site — "
+            "run scripts/provision_list.py first"
+        )
+    rows = []
+    url = f"/sites/{site_id}/lists/{target['id']}/items?$expand=fields&$top=200"
+    while url:
+        page = client.get(url)
+        for item in page["value"]:
+            fields = item.get("fields", {})
+            row = {k: fields.get(k) for k in FIELDS if k != "description"}
+            row["description"] = fields.get("Title")
+            row["source_file"] = fields.get("source_file")
+            rows.append(row)
+        url = page.get("@odata.nextLink")
+    return rows
 
 
 # -- writer ----------------------------------------------------------------
