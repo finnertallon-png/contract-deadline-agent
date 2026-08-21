@@ -208,6 +208,23 @@ untouched. Running it twice is a no-op. Events are all-day (contracts
 state dates, not times) in a dedicated "Contract Deadlines" calendar,
 with a one-week default reminder.
 
+Relative deadlines cross the same boundary one step later, and only
+behind a human decision. The list carries a `trigger_date` column that no
+pipeline stage ever writes: a person records when the trigger event
+occurred — usually by telling the review chatbot ("the NTP was issued
+August 19"), which writes it to the row, so the decision lives in the
+list, auditable, not buried in a chat transcript. With a recorded
+trigger, the due date is arithmetic on a human-supplied fact, and the
+sync does it only where it can be done exactly: day and week durations
+on a calendar-day basis, with the full computation printed on the event.
+Business-day durations are refused outright — correct business-day
+counting needs the firm's jurisdiction-specific holiday calendar, and a
+cure deadline silently landing on a court holiday is precisely the
+failure this tool exists to prevent. An unspecified basis computes as
+calendar days, the earliest the deadline could fall (the conservative
+direction), with the assumption stated on the event. Changing a recorded
+trigger date patches the event to the new due date on the next sync.
+
 The sync has two data sources with one deliberate difference. Demo/dev
 mode reads a pipeline output file (`contract.deadlines.json`) and scopes
 its reconcile per contract. Deployment mode (`sharepoint --calendar`)

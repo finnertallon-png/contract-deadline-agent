@@ -113,6 +113,9 @@ def test_schema_mirrors_writer_fields_and_enums():
     assert set(types["choice"]["choices"]) == {t.value for t in ObligationType}
     # date_text is a text column by design, never a Date column
     assert "text" in next(c for c in list_columns() if c["name"] == "date_text")
+    # trigger_date: human-recorded, not a writer field, same text convention
+    assert "text" in next(
+        c for c in list_columns() if c["name"] == "trigger_date")
 
 
 def test_ensure_list_creates_with_full_schema(client, fake):
@@ -162,10 +165,12 @@ def test_read_list_rows_maps_title_back_to_description(client, fake):
         "quote": "no later than December 31, 2026.",
         "source_clause": "5.2",
         "source_file": "https://contoso.sharepoint.com/c.pdf",
+        "trigger_date": "August 19, 2026",
     }}]
     [row] = read_list_rows(client, SITE_ID)
     assert row["description"] == "Achieve Final Completion."
     assert row["status"] == "approved"
+    assert row["trigger_date"] == "August 19, 2026"
     assert row["date_text"] == "December 31, 2026"
     assert row["source_file"].endswith("c.pdf")
     assert row["duration_value"] is None  # absent columns come back None

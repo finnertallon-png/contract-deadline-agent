@@ -5,10 +5,17 @@ docs/LIMITATIONS.md gets crossed — deliberately, in one auditable place.
 The pipeline stores absolute deadlines as the clause states them
 (``date_text``, verbatim); this module parses that text against a fixed
 list of explicit date formats at sync time. Anything the list does not
-match is *skipped and reported*, never guessed. Relative deadlines are
-skipped too: their clock starts at a trigger event the record cannot
-date. Both show up in the sync report, so what did not reach the
-calendar is as visible as what did.
+match is *skipped and reported*, never guessed. Relative deadlines
+follow the same discipline one step later: their clock starts at a
+trigger event the record cannot date, so they stay off the calendar
+until a person records the trigger date (list column ``trigger_date``,
+usually via the review chatbot). With a recorded trigger the due date is
+exact arithmetic on a human decision — computed only where it can be
+done exactly (day/week durations on a calendar-day basis; business-day
+durations are refused pending a firm holiday calendar), with the
+computation shown on the event. Everything that stays off the calendar
+shows up in the sync report, so what did not reach it is as visible as
+what did.
 
 Idempotency: every synced event carries a single-value extended property
 ``source|key|content-hash``. The key hashes the record's identifying
@@ -128,7 +135,57 @@ class SyncReport:
         }
 
 
-def _event_body(row: dict, contract: dict | None, source: str) -> str:
+def _relative_due(row: dict) -> tuple[dt.date | None, list[str], str | None]:
+    """Due date for an approved relative row with a recorded trigger date.
+
+    Returns (due date, body lines showing the arithmetic, skip reason);
+    exactly one of due/reason is set. The arithmetic is only done on a
+    human-recorded trigger date, and only where it can be done exactly:
+    day and week durations on a calendar-day basis. Business-day
+    durations are refused — correct business-day arithmetic needs the
+    firm's (jurisdiction-specific) holiday calendar, and a wrong due
+    date is worse than a visible gap. An unspecified basis computes as
+    calendar days, which is the earliest the deadline could fall — the
+    conservative direction — with the assumption stated on the event.
+    """
+    trigger_text = str(row.get("trigger_date") or "").strip()
+    if not trigger_text:
+        return None, [], (
+            "relative deadline — the clock starts at a trigger event; "
+            "record the trigger date in the list to calendar it")
+    trigger = parse_date_text(trigger_text)
+    if trigger is None:
+        return None, [], (
+            f"trigger date not in a recognized format: {trigger_text!r}")
+    value, unit = row.get("duration_value"), row.get("duration_unit")
+    if value is None or unit not in ("days", "weeks"):
+        return None, [], (
+            f"cannot compute a due date from '{value} {unit}' — only day "
+            "and week arithmetic is supported")
+    basis = row.get("calendar")
+    if basis == "business":
+        return None, [], (
+            "business-day duration — computing it correctly needs the "
+            "firm's holiday calendar; calendar this one by hand")
+    days = int(value) * (7 if unit == "weeks" else 1)
+    due = trigger + dt.timedelta(days=days)
+    lines = [
+        f"Deadline as stated: {int(value)} {unit} "
+        f"({basis or 'basis unspecified'}) after {row.get('trigger')}",
+        f"Trigger date (recorded in the deadlines list): "
+        f"{trigger.isoformat()}",
+        f"Due date: {trigger.isoformat()} + {days} calendar days = "
+        f"{due.isoformat()}",
+    ]
+    if basis == "unspecified":
+        lines.append(
+            "Basis unspecified in the clause — computed as calendar days, "
+            "the earliest the deadline could fall.")
+    return due, lines, None
+
+
+def _event_body(row: dict, contract: dict | None, source: str,
+                computed: list[str]) -> str:
     lines = []
     if contract and contract.get("project_name"):
         lines.append(f"Contract: {contract['project_name']}")
@@ -136,7 +193,11 @@ def _event_body(row: dict, contract: dict | None, source: str) -> str:
         f"Obligation type: {row.get('obligation_type')}",
         f"Obligor: {row.get('obligor') or 'not stated'}",
         f"Clause: {row.get('source_path') or row.get('source_clause')}",
-        f"Deadline as stated: \"{row.get('date_text')}\"",
+    ]
+    if row.get("deadline_kind") == "absolute":
+        lines.append(f"Deadline as stated: \"{row.get('date_text')}\"")
+    lines += computed
+    lines += [
         "",
         f"\"{row.get('quote')}\"",
         "",
@@ -151,13 +212,13 @@ def _event_body(row: dict, contract: dict | None, source: str) -> str:
 
 
 def _event_payload(row: dict, date: dt.date, contract: dict | None,
-                   source: str) -> dict:
+                   source: str, computed: list[str]) -> dict:
     # All-day events, UTC midnight to midnight: contracts state dates,
     # not times, and an all-day banner renders the same in any timezone.
     return {
         "subject": row["description"],
         "body": {"contentType": "text",
-                 "content": _event_body(row, contract, source)},
+                 "content": _event_body(row, contract, source, computed)},
         "start": {"dateTime": f"{date.isoformat()}T00:00:00",
                   "timeZone": "UTC"},
         "end": {"dateTime": f"{(date + dt.timedelta(days=1)).isoformat()}"
@@ -182,21 +243,28 @@ def plan_events(payload: dict, source: str) -> tuple[list[EventPlan], list[dict]
     for row in payload["records"]:
         if row.get("status") != "approved":
             skip(row, "needs review — approve before calendaring")
-        elif row.get("deadline_kind") != "absolute":
-            skip(row, "relative deadline — the clock starts at a trigger "
-                      "event; calendaring it needs the trigger date")
-        else:
+            continue
+        if row.get("deadline_kind") == "absolute":
             date = parse_date_text(row.get("date_text") or "")
+            computed: list[str] = []
             if date is None:
                 skip(row, "stated date not in a recognized format: "
                           f"{row.get('date_text')!r}")
                 continue
-            event = _event_payload(row, date, contract, source)
-            content_hash = hashlib.sha256(
-                json.dumps(event, sort_keys=True).encode("utf-8")
-            ).hexdigest()[:16]
-            plans.append(EventPlan(deadline_key(row), content_hash, event,
-                                   row["description"]))
+        elif row.get("deadline_kind") == "relative":
+            date, computed, reason = _relative_due(row)
+            if reason:
+                skip(row, reason)
+                continue
+        else:
+            skip(row, f"unknown deadline kind: {row.get('deadline_kind')!r}")
+            continue
+        event = _event_payload(row, date, contract, source, computed)
+        content_hash = hashlib.sha256(
+            json.dumps(event, sort_keys=True).encode("utf-8")
+        ).hexdigest()[:16]
+        plans.append(EventPlan(deadline_key(row), content_hash, event,
+                               row["description"]))
     return plans, skipped
 
 

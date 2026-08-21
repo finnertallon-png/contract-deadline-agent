@@ -6,8 +6,10 @@ where it fails.
 ## This tool does not
 
 - Provide legal advice, or decide whether a deadline applies to a given situation
-- Compute actual calendar dates. It extracts the rule; a human supplies the
-  trigger date.
+- Compute actual calendar dates during extraction. It extracts the rule; a
+  human supplies the trigger date. (Once a person has recorded that trigger
+  date in the deadlines list, the calendar sync does the arithmetic — exact
+  cases only, computation shown on the event. See `ARCHITECTURE.md`.)
 - Handle handwritten or scanned-without-OCR documents
 - Resolve conflicts between a prime contract and a subcontract that flows down
   different terms
@@ -59,8 +61,15 @@ where it fails.
   than printed ones.
 - **Calendar sync covers a fixed set of date formats.** A stated date the
   format list does not recognize ("the last business day of March 2027") is
-  skipped and reported, by design. Relative deadlines never reach the
-  calendar at all — supplying the trigger date remains a human step.
+  skipped and reported, by design. The same strict parsing applies to
+  human-recorded trigger dates.
+- **Due-date arithmetic covers the exact cases only.** A relative deadline
+  reaches the calendar only after a person records its trigger date, and
+  only for day/week durations: business-day durations are refused because
+  correct business-day counting needs the firm's jurisdiction-specific
+  holiday calendar; hour, month, and year durations are unsupported. An
+  unspecified day basis is computed as calendar days — the earliest the
+  deadline could fall — with that assumption stated on the event.
 - **Calendar events churn if re-extraction shifts the quote.** The sync
   keys events on the record's verbatim fields. If a later run extracts the
   same obligation with a different quote span, the old event is deleted and

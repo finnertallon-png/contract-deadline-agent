@@ -138,6 +138,70 @@ def test_deadline_key_ignores_description_wording():
     assert deadline_key(row()) != deadline_key(row(source_clause="9.9"))
 
 
+# -- relative deadlines with a recorded trigger date -----------------------
+
+
+def rel_row(**over) -> dict:
+    base = row(
+        deadline_kind="relative", date_text=None,
+        description="Either party must initiate a Claim by written notice.",
+        trigger="the event giving rise to the Claim",
+        duration_value=21, duration_unit="days", calendar="calendar",
+        trigger_date="August 19, 2026",
+    )
+    return base | over
+
+
+def test_recorded_trigger_computes_the_due_date():
+    [plan], skipped = plan_events(payload(rel_row()), "sharepoint-list")
+    assert not skipped
+    assert plan.payload["start"]["dateTime"] == "2026-09-09T00:00:00"
+    body = plan.payload["body"]["content"]
+    assert "Trigger date (recorded in the deadlines list): 2026-08-19" in body
+    assert "2026-08-19 + 21 calendar days = 2026-09-09" in body
+
+
+def test_week_durations_compute_and_floats_from_graph_are_fine():
+    # Graph number columns come back as floats.
+    [plan], _ = plan_events(
+        payload(rel_row(duration_value=2.0, duration_unit="weeks")),
+        "sharepoint-list")
+    assert plan.payload["start"]["dateTime"] == "2026-09-02T00:00:00"
+
+
+def test_unspecified_basis_computes_with_stated_assumption():
+    [plan], _ = plan_events(
+        payload(rel_row(calendar="unspecified")), "sharepoint-list")
+    assert "earliest the deadline could fall" in plan.payload["body"]["content"]
+
+
+@pytest.mark.parametrize(
+    ("over", "reason_match"),
+    [
+        ({"trigger_date": None}, "record the trigger date"),
+        ({"trigger_date": "when notice arrives"}, "not in a recognized format"),
+        ({"calendar": "business"}, "holiday calendar"),
+        ({"duration_unit": "months"}, "only day and week arithmetic"),
+        ({"duration_unit": "hours", "duration_value": 24},
+         "only day and week arithmetic"),
+    ],
+)
+def test_relative_refusal_boundaries(over, reason_match):
+    plans, [skip] = plan_events(payload(rel_row(**over)), "sharepoint-list")
+    assert not plans
+    assert reason_match in skip["reason"]
+
+
+def test_changed_trigger_date_patches_the_event(client, fake):
+    sync(client, USER, payload(rel_row()), "sharepoint-list")
+    report = sync(client, USER,
+                  payload(rel_row(trigger_date="August 25, 2026")),
+                  "sharepoint-list")
+    assert len(report.updated) == 1 and not report.created and not report.removed
+    [event] = fake.events.values()
+    assert event["start"]["dateTime"] == "2026-09-15T00:00:00"
+
+
 # -- reconcile loop --------------------------------------------------------
 
 

@@ -208,6 +208,11 @@ def list_columns() -> list[dict]:
         # deadlines as the clause states them and never computes a calendar
         # date. Converting is a human decision at calendaring time.
         _text("date_text"),
+        # Not a pipeline output: a person (often via the review chatbot)
+        # records when a relative deadline's trigger event occurred. The
+        # calendar sync computes the due date from it. Text like date_text —
+        # parsed strictly at sync time, unparseable values reported.
+        _text("trigger_date"),
         _text("quote", multiline=True),
         _text("source_clause"),
         _text("source_path"),
@@ -306,6 +311,7 @@ def read_list_rows(client: GraphClient, site_id: str) -> list[dict]:
             row = {k: fields.get(k) for k in FIELDS if k != "description"}
             row["description"] = fields.get("Title")
             row["source_file"] = fields.get("source_file")
+            row["trigger_date"] = fields.get("trigger_date")
             rows.append(row)
         url = page.get("@odata.nextLink")
     return rows
